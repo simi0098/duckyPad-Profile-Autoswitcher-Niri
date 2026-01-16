@@ -342,6 +342,10 @@ Wake up from sleep
 
 ### Dump Persistent Global Variables (0x18)
 
+* Reads 61 bytes of **PGV memory region**
+    * Little-endian
+    * Read more about [memory map here](https://github.com/duckyPad/DuckStack/blob/master/README.md)
+
 💬 PC to duckyPad:
 
 |   Byte#  |   Description   |
@@ -349,6 +353,7 @@ Wake up from sleep
 |     0    |        0x05        |
 |     1    | Reserved |
 |     2    |        0x18        |
+|     3    |Starting address|
 | 3 ... 63 | 0 |
 
 💬 duckyPad to PC:
@@ -358,10 +363,7 @@ Wake up from sleep
 |     0    |    0x04    |
 |     1    |          Reserved         |
 |     2    | Status, 0 = SUCCESS |
-| 3-4 | GV0 |
-| 5-6 | GV1 |
-|....|....|
-| 61-62 | GV29 |
+| 3-63 | Memory content<br>Little-endian |
 
 
 ### Write Persistent Global Variables (0x19)
@@ -378,10 +380,12 @@ Wake up from sleep
 |     1    | Reserved |
 |     2    |        0x19        |
 | 3 | GV index + 127 |
-| 4 | Upper Byte |
-| 5 | Lower Byte |
-|6-8| Next GV (if needed)|
-|9-11| Next GV (if needed)|
+| 4 | LSB |
+| 5 | Byte 2 |
+|6|Byte 3|
+|7|MSB|
+|8-11| Next GV (if needed)|
+|15-18| Next GV (if needed)|
 |....|....|
 
 💬 duckyPad to PC:
