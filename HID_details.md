@@ -337,8 +337,9 @@ Wake up from sleep
 
 ### Dump Persistent Global Variables (0x18)
 
-* Reads 61 bytes of **PGV memory region**
-    * [Learn more about memory map](https://github.com/duckyPad/DuckStack/blob/master/README.md)
+* PGV index `i`: **0 to 31**
+* Returns `i`-th to `i+14`-th PGV
+
 
 💬 PC to duckyPad:
 
@@ -347,8 +348,8 @@ Wake up from sleep
 |     0    |        0x05        |
 |     1    | Reserved |
 |     2    |        0x18        |
-|     3    |Starting address|
-| 3 ... 63 | 0 |
+|     3    |PGV index|
+| 4 ... 63 | 0 |
 
 💬 duckyPad to PC:
 
@@ -357,8 +358,10 @@ Wake up from sleep
 |     0    |    0x04    |
 |     1    |          Reserved         |
 |     2    | Status, 0 = SUCCESS |
-| 3-63 | Memory content|
-
+| 3-6 | PGV Value i |
+| 7-10 | PGV Value i+1|
+|...|...|
+| 59-62 | PGV Value i+14|
 
 ### Write Persistent Global Variables (0x19)
 
@@ -374,11 +377,8 @@ Wake up from sleep
 |     0    |        0x05        |
 |     1    | Reserved |
 |     2    |        0x19        |
-| 3 | GV index + 127 |
-| 4 | LSB |
-| 5 | Byte 2 |
-|6|Byte 3|
-|7|MSB|
+| 3 | PGV index + 128 |
+| 4-7 | PGV Value |
 |8-12| Next GV (if needed)|
 |13-17| Next GV (if needed)|
 |....|....|
