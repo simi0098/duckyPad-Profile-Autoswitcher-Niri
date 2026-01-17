@@ -103,6 +103,11 @@ Better handling of switching to profiles that don't exist
 1.1.1
 Dec 25 2025
 Bumped up max supported fw version for DSVM2
+
+1.2.0
+Jan 17 2026
+HID commands all little endian
+new PGV dump and write
 """
 
 UI_SCALE = float(os.getenv("DUCKYPAD_UI_SCALE", default=1))
@@ -110,17 +115,17 @@ UI_SCALE = float(os.getenv("DUCKYPAD_UI_SCALE", default=1))
 def scaled_size(size: int) -> int:
     return int(size * UI_SCALE)
 
-THIS_VERSION_NUMBER = '1.1.1'
+THIS_VERSION_NUMBER = '1.2.0'
 MAIN_WINDOW_WIDTH = scaled_size(640)
 MAIN_WINDOW_HEIGHT = scaled_size(660)
 PADDING = 10
 
 THIS_DUCKYPAD = dp_type()
 
-MIN_DUCKYPAD_PRO_FIRMWARE_VERSION = "2.0.0"
-MAX_DUCKYPAD_PRO_FIRMWARE_VERSION = "3.5.0"
-MIN_DUCKYPAD_2020_FIRMWARE_VERSION = "2.0.0"
-MAX_DUCKYPAD_2020_FIRMWARE_VERSION = "3.5.0"
+MIN_DUCKYPAD_PRO_FIRMWARE_VERSION = "3.0.0"
+MAX_DUCKYPAD_PRO_FIRMWARE_VERSION = "3.10.0"
+MIN_DUCKYPAD_2020_FIRMWARE_VERSION = "3.0.0"
+MAX_DUCKYPAD_2020_FIRMWARE_VERSION = "3.10.0"
 
 print("\n\n--------------------------")
 print("\n\nWelcome to duckyPad Autoswitcher!\n")
