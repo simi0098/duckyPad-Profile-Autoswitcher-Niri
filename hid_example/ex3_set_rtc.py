@@ -57,23 +57,10 @@ def get_timestamp_and_utc_offset():
     utc_offset_minutes = int(now.utcoffset().total_seconds() // 60)
     return unix_timestamp, utc_offset_minutes
 
-def u32_to_u8_list_be(value):
-    return [
-        (value >> 24) & 0xFF,
-        (value >> 16) & 0xFF,
-        (value >> 8) & 0xFF,
-        value & 0xFF]
-
-def i16_to_u8_list_be(value):
-    value &= 0xFFFF
-    return [
-        (value >> 8) & 0xFF,
-        value & 0xFF ]
-
 unix_ts, utc_offset_minutes = get_timestamp_and_utc_offset()
 
-unix_ts_u8_list = u32_to_u8_list_be(unix_ts)
-utc_offset_u8_list = i16_to_u8_list_be(utc_offset_minutes)
+unix_ts_u8_list = list(unix_ts.to_bytes(4, 'little', signed=False))
+utc_offset_u8_list = list(utc_offset_minutes.to_bytes(2, 'little', signed=True))
 
 print(f"\n\n--------\nUNIX Timestamp: {unix_ts}\nUTC Offset (Minutes): {utc_offset_minutes}\n-----------\n")
 
@@ -95,4 +82,7 @@ print("Sending to duckyPad:\n", pc_to_duckypad_buf)
 duckypad_to_pc_buf = duckypad_hid_write(pc_to_duckypad_buf)
 print("\nduckyPad response:\n", duckypad_to_pc_buf)
 
-print("\nA clock icon should appear on top-left corner")
+if duckypad_to_pc_buf[2] == 0:
+    print("\nSuccess! A clock icon should appear on top-left corner")
+else:
+    print("\nduckyPad reported ERROR, is firmware up to date?")

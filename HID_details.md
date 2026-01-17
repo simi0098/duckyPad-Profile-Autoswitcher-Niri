@@ -340,7 +340,6 @@ Wake up from sleep
 * PGV index `i`: **0 to 31**
 * Returns `i`-th to `i+14`-th PGV
 
-
 💬 PC to duckyPad:
 
 |   Byte#  |   Description   |
