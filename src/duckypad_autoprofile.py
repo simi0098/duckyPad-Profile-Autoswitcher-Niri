@@ -207,6 +207,8 @@ def duckypad_connect():
     THIS_DUCKYPAD.device_type = user_selected_dp['dp_model']
     THIS_DUCKYPAD.info_dict = user_selected_dp
     connection_info_str.set(f"Connected!      Model: {dp_model_lookup.get(THIS_DUCKYPAD.device_type)}      Serial: {THIS_DUCKYPAD.info_dict.get('serial')}      Firmware: {THIS_DUCKYPAD.info_dict.get('fw_version')}")
+    if 'linux' in sys.platform:
+        myh.close()
     return True
 
 def open_hid_path(dp_info_dict, hid_obj):
@@ -241,34 +243,63 @@ HID_COMMAND_GOTO_PROFILE_BY_NAME = 23
 
 def duckypad_write_with_retry(data_buf):
     try:
+        # NEW: On Linux, open the path before writing
+        if 'linux' in sys.platform:
+            try:
+                myh.open_path(THIS_DUCKYPAD.info_dict['hid_path'])
+            except Exception as e:
+                raise e # Force jump to the "SECOND TRY" block if open fails
+
         dp_response = hid_txrx(data_buf, myh)
+
+        # NEW: On Linux, close immediately after writing
+        if 'linux' in sys.platform:
+            myh.close()
+
         if len(dp_response) != PC_TO_DUCKYPAD_HID_BUF_SIZE:
             return DP_WRITE_FAIL
         if dp_response[2] == 0:
             return DP_WRITE_OK
-        if dp_response[2] == 1:
-            return DP_WRITE_FAIL
         if dp_response[2] == 2:
             return DP_WRITE_BUSY
-        return DP_WRITE_OK
+        return DP_WRITE_FAIL
     except Exception as e:
         print("DP write first try:", e)
+        # Clean up if Linux left it open during crash
+        if 'linux' in sys.platform:
+            try: myh.close()
+            except: pass
 
     try:
         print("SECOND TRY")
-        duckypad_connect()
+        if duckypad_connect() is False:
+            return DP_WRITE_FAIL
+        
+        # NEW: On Linux, open again (duckypad_connect closes it on exit)
+        if 'linux' in sys.platform:
+            myh.open_path(THIS_DUCKYPAD.info_dict['hid_path'])
+
         dp_response = hid_txrx(data_buf, myh)
+
+        # NEW: On Linux, close immediately
+        if 'linux' in sys.platform:
+            myh.close()
+
         if len(dp_response) != PC_TO_DUCKYPAD_HID_BUF_SIZE:
             return DP_WRITE_FAIL
         if dp_response[2] == 0:
             return DP_WRITE_OK
-        if dp_response[2] == 1:
-            return DP_WRITE_FAIL
         if dp_response[2] == 2:
             return DP_WRITE_BUSY
-        return DP_WRITE_OK
+        return DP_WRITE_FAIL
     except Exception as e:
         print(e)
+        if 'linux' in sys.platform:
+            try:
+                myh.close()
+            except:
+                pass
+
     print("FAILED")
     return DP_WRITE_FAIL
     
@@ -382,8 +413,8 @@ def update_banner_text(switch_result):
         pass
         # print("DUCKYPAD IS BUSY! Retrying later")
     elif switch_result == DP_WRITE_FAIL:
-        connection_info_label.place(x=scaled_size(130), y=scaled_size(0))
-        connection_info_str.set(f"duckyPad Disappeared!\nI'll keep looking, or press Connect to select a new device.")
+        connection_info_label.place(x=scaled_size(130), y=scaled_size(5))
+        connection_info_str.set(f"duckyPad Disappeared!")
     root.update()
 
 def t1_worker():
@@ -783,14 +814,27 @@ def sync_rtc():
     root.after(RTC_SYNC_FREQ_SECONDS*1000, sync_rtc)
     try:
         if THIS_DUCKYPAD.info_dict is not None:
+            # NEW: On Linux, open before sync
+            if 'linux' in sys.platform:
+                myh.open_path(THIS_DUCKYPAD.info_dict['hid_path'])
+            
             duckypad_sync_rtc(myh)
+            
+            # NEW: On Linux, close after sync
+            if 'linux' in sys.platform:
+                myh.close()
         return
     except Exception as e:
         print("sync_rtc:", e)
+        if 'linux' in sys.platform:
+            try:
+                myh.close()
+            except:
+                pass
+            
     update_banner_text(DP_WRITE_FAIL)
     if duckypad_connect():
         update_banner_text(DP_WRITE_OK)
-
 root.after(WINDOW_CHECK_FREQUENCY_MS, update_current_app_and_title)
 root.after(RTC_SYNC_FREQ_SECONDS*1000, sync_rtc)
 root.mainloop()

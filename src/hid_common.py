@@ -50,11 +50,11 @@ def get_all_dp_info(dp_path_list):
     pc_to_duckypad_buf = get_empty_pc_to_duckypad_buf()
     for this_path in dp_path_list:
         # print(this_path)
-        myh = hid.device()
-        myh.open_path(this_path)
-        myh.write(pc_to_duckypad_buf)
-        result = myh.read(DUCKYPAD_TO_PC_HID_BUF_SIZE)
-        myh.close()
+        thish = hid.device()
+        thish.open_path(this_path)
+        thish.write(pc_to_duckypad_buf)
+        result = thish.read(DUCKYPAD_TO_PC_HID_BUF_SIZE)
+        thish.close()
         # print(result)
         if result[2] != HID_RESPONSE_OK:
             continue
