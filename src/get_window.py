@@ -1,46 +1,40 @@
-import time
 import platform
 import os
-import subprocess
-import json
-import sys
 
 this_os = platform.system()
 
-# --- Platform Specific Imports ---
+# --- Platform Specific Imports and Setup ---
+IS_WAYLAND = False
+
 if this_os == 'Windows':
     import ctypes
     import ctwin32
     import ctwin32.ntdll
     import ctwin32.user
     import pygetwindow as gw
+
 elif this_os == 'Darwin':
     from AppKit import NSWorkspace
     import Quartz
+
 elif this_os == 'Linux':
-    import psutil
-    # Try to import X11 libraries safely; they might not exist on a pure Wayland setup
-    try:
-        from ewmh import EWMH
-        import Xlib.display
-        # Only initialize X11 atoms if we can connect to a display
+    # Check for Wayland environment variable
+    if os.environ.get('WAYLAND_DISPLAY'):
+        IS_WAYLAND = True
+    else:
         try:
-            _disp = Xlib.display.Display()
-            NET_WM_NAME = _disp.intern_atom('_NET_WM_NAME')
-        except:
-            NET_WM_NAME = None
-            EWMH = None
-    except ImportError:
-        EWMH = None
-        NET_WM_NAME = None
+            from ewmh import EWMH
+            import psutil
+            import Xlib
+            # Attempt to connect to X server to ensure we aren't in a broken state
+            # and to get the atom for window names.
+            _display = Xlib.display.Display()
+            NET_WM_NAME = _display.intern_atom('_NET_WM_NAME')
+        except (ImportError, Exception):
+            # Fallback if imports fail or X server is unreachable
+            IS_WAYLAND = True
 
-
-# --- Helper: Check for Wayland ---
-def is_wayland():
-    return os.environ.get('XDG_SESSION_TYPE', '').lower() == 'wayland'
-
-
-# --- Main Public Functions ---
+# --- Main Interface Functions ---
 
 def get_active_window():
     if this_os == 'Windows':
@@ -48,9 +42,7 @@ def get_active_window():
     elif this_os == 'Darwin':
         return darwin_get_active_window()
     elif this_os == 'Linux':
-        if is_wayland():
-            return linux_wayland_get_active_window()
-        return linux_x11_get_active_window()
+        return linux_get_active_window()
     raise NotImplementedError(f'Platform {this_os} not supported')
 
 def get_list_of_all_windows():
@@ -59,114 +51,15 @@ def get_list_of_all_windows():
     elif this_os == 'Darwin':
         return darwin_get_list_of_all_windows()
     elif this_os == 'Linux':
-        if is_wayland():
-            return linux_wayland_get_list_of_all_windows()
-        return linux_x11_get_list_of_all_windows()
+        return linux_get_list_of_all_windows()
     raise NotImplementedError(f'Platform {this_os} not supported')
 
+# --- Linux Implementation ---
 
-# --- Linux Wayland Implementation ---
+def linux_get_list_of_all_windows():
+    if IS_WAYLAND:
+        return {('Wayland', 'Wayland is not supported yet')}
 
-def _run_cmd(cmd):
-    """Helper to run shell commands and return output string."""
-    try:
-        return subprocess.check_output(cmd, shell=True, text=True).strip()
-    except subprocess.CalledProcessError:
-        return None
-
-def linux_wayland_get_active_window():
-    desktop = os.environ.get('XDG_CURRENT_DESKTOP', '').upper()
-    
-    # GNOME Support (via gdbus)
-    if 'GNOME' in desktop:
-        # Note: newer GNOME versions might restrict 'Eval' for security.
-        cmd = """
-        gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell --method org.gnome.Shell.Eval "
-            var w = global.display.focus_window;
-            if (w) {
-                JSON.stringify({app: w.get_wm_class(), title: w.get_title()});
-            } else {
-                JSON.stringify({app: '', title: ''});
-            }
-        "
-        """
-        output = _run_cmd(cmd)
-        if output:
-            try:
-                # Output format is (true, '{"app":...}')
-                json_str = output.split("'", 1)[1].rsplit("'", 1)[0]
-                json_str = json_str.replace('\\"', '"') # Cleanup escaped quotes
-                data = json.loads(json_str)
-                return (data.get('app', 'Unknown'), data.get('title', 'Unknown'))
-            except:
-                pass
-
-    # KDE Plasma Support (via qdbus)
-    elif 'KDE' in desktop:
-        # Get Active Window ID
-        win_id = _run_cmd("qdbus org.kde.KWin /KWin org.kde.KWin.activeWindow")
-        if win_id:
-            # Get Info for ID
-            info = _run_cmd(f"qdbus org.kde.KWin /KWin queryWindowInfo {win_id}")
-            if info:
-                info_map = {}
-                for line in info.split('\n'):
-                    if ':' in line:
-                        key, val = line.split(':', 1)
-                        info_map[key.strip()] = val.strip()
-                return (info_map.get('resourceClass', 'Unknown'), info_map.get('caption', 'Unknown'))
-
-    return ('Unknown (Wayland)', 'Wayland Active Window Detection Failed')
-
-
-def linux_wayland_get_list_of_all_windows():
-    desktop = os.environ.get('XDG_CURRENT_DESKTOP', '').upper()
-    ret = set()
-
-    # GNOME Support
-    if 'GNOME' in desktop:
-        cmd = """
-        gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell --method org.gnome.Shell.Eval "
-            var wins = global.display.get_tab_list(0, null);
-            var res = [];
-            wins.forEach(function(w) {
-                res.push({app: w.get_wm_class(), title: w.get_title()});
-            });
-            JSON.stringify(res);
-        "
-        """
-        output = _run_cmd(cmd)
-        if output:
-            try:
-                # Parse: (true, '[{...}, {...}]')
-                json_str = output.split("'", 1)[1].rsplit("'", 1)[0]
-                json_str = json_str.replace('\\"', '"')
-                data = json.loads(json_str)
-                for item in data:
-                    ret.add((item.get('app', 'Unknown'), item.get('title', 'Unknown')))
-            except:
-                pass
-    
-    # KDE Support
-    elif 'KDE' in desktop:
-        # KDE doesn't have a simple 'list all' via qdbus without a helper script.
-        # Returning active window as a fallback to avoid crash/empty
-        active = linux_wayland_get_active_window()
-        if active[0] != 'Unknown (Wayland)':
-            ret.add(active)
-            
-    if not ret:
-        ret.add(('Unknown', 'Wayland: List Windows Not Fully Supported'))
-        
-    return ret
-
-
-# --- Linux X11 Implementation (Original Logic) ---
-
-def linux_x11_get_list_of_all_windows():
-    if not EWMH:
-        return {('Error', 'Missing X11 libs (ewmh)')}
-        
     ret = set()
     ewmh = EWMH()
     for window in ewmh.getClientList():
@@ -174,6 +67,7 @@ def linux_x11_get_list_of_all_windows():
             win_pid = ewmh.getWmPid(window)
         except TypeError:
             win_pid = False
+        
         if win_pid:
             try:
                 app = psutil.Process(win_pid).name()
@@ -181,49 +75,48 @@ def linux_x11_get_list_of_all_windows():
                 app = 'Unknown'
         else:
             app = 'Unknown'
+
         wm_name = window.get_wm_name()
-        if not wm_name and NET_WM_NAME:
-            try:
-                wm_name = window.get_full_property(NET_WM_NAME, 0).value
-            except:
-                pass
+        if not wm_name:
+            wm_name = window.get_full_property(NET_WM_NAME, 0).value
         if not wm_name:
             try:
-                wm_name = f'class:{window.get_wm_class()[0]}'
-            except:
-                wm_name = 'Unknown'
+                wm_class = window.get_wm_class()
+                wm_name = f'class:{wm_class[0]}' if wm_class else 'unknown'
+            except TypeError:
+                wm_name = 'unknown'
+
         if isinstance(wm_name, bytes):
-            wm_name = wm_name.decode('utf-8', errors='ignore')
+            wm_name = wm_name.decode('utf-8')
         ret.add((app, wm_name))
     return ret
 
-def linux_x11_get_active_window():
-    if not EWMH:
-        return ('Error', 'Missing X11 libs (ewmh)')
+def linux_get_active_window():
+    if IS_WAYLAND:
+        return 'Wayland', 'Wayland is not supported yet'
 
     ewmh = EWMH()
     active_window = ewmh.getActiveWindow()
     if not active_window:
         return '', ''
+    
     try:
         win_pid = ewmh.getWmPid(active_window)
     except (TypeError, Xlib.error.XResourceError):
         win_pid = False
-        
+    
     wm_name = active_window.get_wm_name()
-    if not wm_name and NET_WM_NAME:
-        try:
-            wm_name = active_window.get_full_property(NET_WM_NAME, 0).value
-        except:
-            pass
+    if not wm_name:
+        wm_name = active_window.get_full_property(NET_WM_NAME, 0).value
     if not wm_name:
         try:
-            wm_name = f'class:{active_window.get_wm_class()[0]}'
-        except:
-            wm_name = 'Unknown'
+            wm_class = active_window.get_wm_class()
+            wm_name = f'class:{wm_class[0]}' if wm_class else 'unknown'
+        except TypeError:
+            wm_name = 'unknown'
             
     if isinstance(wm_name, bytes):
-        wm_name = wm_name.decode('utf-8', errors='ignore')
+        wm_name = wm_name.decode('utf-8')
         
     if win_pid:
         try:
@@ -232,18 +125,19 @@ def linux_x11_get_active_window():
             active_app = 'Unknown'
     else:
         return '', wm_name
+        
     return (active_app, wm_name)
 
-
-# --- MacOS Implementation (Unchanged) ---
+# --- macOS (Darwin) Implementation ---
 
 def darwin_get_active_window():
     windows = Quartz.CGWindowListCopyWindowInfo(
         Quartz.kCGWindowListExcludeDesktopElements | Quartz.kCGWindowListOptionOnScreenOnly, Quartz.kCGNullWindowID)
     for window in windows:
         if window[Quartz.kCGWindowLayer] == 0:
-            return window[Quartz.kCGWindowOwnerName], window.get(Quartz.kCGWindowName, 'unknown')
+            return window[Quartz.kCGWindowOwnerName], window.get(Quartz.kCGWindowName, 'Unknown')
     return '', ''
+
 
 def darwin_get_list_of_all_windows():
     apps = []
@@ -252,13 +146,12 @@ def darwin_get_list_of_all_windows():
 
     for window in windows:
         apps.append((window[Quartz.kCGWindowOwnerName],
-                    window.get(Quartz.kCGWindowName, 'unknown')))
+                    window.get(Quartz.kCGWindowName, 'Unknown')))
     apps = list(set(apps))
     apps = sorted(apps, key=lambda x: x[0])
     return apps
 
-
-# --- Windows Implementation (Unchanged) ---
+# --- Windows Implementation ---
 
 def win_get_app_name(hwnd):
     """Get application name given hwnd."""
@@ -292,19 +185,19 @@ def win_get_active_window():
         return '', ''
     return (win_get_app_name(active_window._hWnd), active_window.title)
 
-
-# --- Main ---
-
 if __name__ == "__main__":
+    """
+    get_list_of_all_windows() should return a list of all windows
+    A list of str tuples: (app_name, window_title)
+    """
     print("\n----- All Windows -----\n")
-    try:
-        for item in get_list_of_all_windows():
-            print(item)
-    except Exception as e:
-        print(f"Error listing windows: {e}")
+    all_windows = get_list_of_all_windows()
+    for item in all_windows:
+        print(item)
 
+    """
+    get_active_window() should return the window that's currently in focus
+    tuple of str: (app_name, window_title)
+    """
     print("\n----- Current Window -----\n")
-    try:
-        print(get_active_window())
-    except Exception as e:
-        print(f"Error getting active window: {e}")
+    print(get_active_window())
