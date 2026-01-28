@@ -15,11 +15,20 @@ import check_update
 from platformdirs import *
 import subprocess
 
-def open_mac_linux_instruction():
-    webbrowser.open('https://dekunukem.github.io/duckyPad-Pro/doc/linux_macos_notes.html')
+def open_url_safe(url):
+    if 'linux' in sys.platform.lower() and os.geteuid() == 0:
+        print(f"\nOpen this URL manually ------>   {url}\n")
+        try:
+            from tkinter import messagebox
+            messagebox.showinfo(title="Info",message="Cannot open webbrowser as root.\n\nPlease click the link printed in your terminal manually.")
+            return
+        except Exception as e:
+            print(e)
+            return
+    webbrowser.open(url)
 
-def is_root():
-    return os.getuid() == 0
+def open_mac_linux_instruction():
+    open_url_safe('https://dekunukem.github.io/duckyPad-Pro/doc/linux_macos_notes.html')
 
 def ensure_dir(dir_path):
     os.makedirs(dir_path, exist_ok=1)
@@ -335,10 +344,10 @@ connection_button.place(x=scaled_size(PADDING), y=scaled_size(5), width=scaled_s
 # --------------------
 
 def open_user_manual():
-    webbrowser.open('https://github.com/dekuNukem/duckyPad-profile-autoswitcher/blob/master/README.md#user-manual')
+    open_url_safe('https://github.com/dekuNukem/duckyPad-profile-autoswitcher/blob/master/README.md#user-manual')
 
 def open_discord():
-    webbrowser.open("https://discord.gg/4sJCBx5")
+    open_url_safe("https://discord.gg/4sJCBx5")
 
 def refresh_autoswitch():
     if config_dict['autoswitch_enabled']:
@@ -360,7 +369,7 @@ def open_save_folder():
     elif 'linux' in sys.platform:
         subprocess.Popen(["xdg-open", save_path])
     else:
-        webbrowser.open(save_path)
+        open_url_safe(save_path)
 
 dashboard_lf = LabelFrame(root, text="Dashboard", width=scaled_size(620), height=scaled_size(95))
 dashboard_lf.place(x=scaled_size(PADDING), y=scaled_size(60)) 
@@ -714,12 +723,12 @@ refresh_autoswitch()
 
 def fw_update_click(event, dp_info_dict):
     if dp_info_dict['dp_model'] == DP_MODEL_OG_DUCKYPAD:
-        webbrowser.open("https://github.com/dekuNukem/duckyPad/blob/master/firmware_updates_and_version_history.md")
+        open_url_safe("https://github.com/dekuNukem/duckyPad/blob/master/firmware_updates_and_version_history.md")
     elif dp_info_dict['dp_model'] == DP_MODEL_DUCKYPAD_PRO:
-        webbrowser.open('https://dekunukem.github.io/duckyPad-Pro/doc/fw_update.html')
+        open_url_safe('https://dekunukem.github.io/duckyPad-Pro/doc/fw_update.html')
 
 def app_update_click(event=None):
-    webbrowser.open('https://github.com/dekuNukem/duckyPad-profile-autoswitcher/releases/latest')
+    open_url_safe('https://github.com/dekuNukem/duckyPad-profile-autoswitcher/releases/latest')
 
 def print_fw_update_label(dp_info_dict):
     this_version = dp_info_dict["fw_version"]
