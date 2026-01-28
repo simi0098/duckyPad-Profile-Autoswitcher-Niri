@@ -117,6 +117,12 @@ Bumped up max supported fw version for DSVM2
 Jan 17 2026
 HID commands all little endian
 new PGV dump and write
+
+1.2.1
+Jan 28 2025
+Fixed keyboard input not working when autoswitching is active on linux
+Fixed url open not working when in linux sudo
+Added retry delay when duckypad is busy
 """
 
 UI_SCALE = float(os.getenv("DUCKYPAD_UI_SCALE", default=1))
@@ -124,7 +130,7 @@ UI_SCALE = float(os.getenv("DUCKYPAD_UI_SCALE", default=1))
 def scaled_size(size: int) -> int:
     return int(size * UI_SCALE)
 
-THIS_VERSION_NUMBER = '1.2.0'
+THIS_VERSION_NUMBER = '1.2.1'
 MAIN_WINDOW_WIDTH = scaled_size(640)
 MAIN_WINDOW_HEIGHT = scaled_size(660)
 PADDING = 10
