@@ -40,7 +40,9 @@ if THIS_VERSION is None:
 
 # --noconsole
 clean(additional='duckypad_*.zip')
-PyInstaller.__main__.run(['duckypad_autoprofile.py','--icon=_icon.ico'])
+
+# Updated PyInstaller run command to collect all certifi data/binaries
+PyInstaller.__main__.run(['duckypad_autoprofile.py', '--icon=_icon.ico', '--collect-all', 'certifi'])
 
 output_folder_path = os.path.join('.', "dist")
 original_name = os.path.join(output_folder_path, "duckypad_autoprofile")

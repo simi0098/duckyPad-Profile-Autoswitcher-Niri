@@ -1,11 +1,13 @@
+import os
 import time
 from tkinter import *
 from tkinter import messagebox
+import certifi
+os.environ["SSL_CERT_FILE"] = certifi.where()
 import urllib.request
 import tkinter.scrolledtext as ScrolledText
 import traceback
 import json
-import os
 import webbrowser
 import sys
 import threading
@@ -123,6 +125,7 @@ Jan 28 2025
 Fixed keyboard input not working when autoswitching is active on linux
 Fixed url open not working when in linux sudo
 Added retry delay when duckypad is busy
+Fixed SSL certificate not found error
 """
 
 UI_SCALE = float(os.getenv("DUCKYPAD_UI_SCALE", default=1))
