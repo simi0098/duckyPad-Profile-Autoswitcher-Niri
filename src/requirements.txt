@@ -1,5 +1,6 @@
 hidapi
 platformdirs
+certifi
 
 # Windows-specific
 ctwin32 ; sys_platform == 'win32'
