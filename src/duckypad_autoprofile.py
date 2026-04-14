@@ -321,17 +321,20 @@ def duckypad_write_with_retry(data_buf):
     print("FAILED")
     return DP_WRITE_FAIL
     
-def prev_prof_click():
+def _prof_click_worker(hid_command):
     buffff = get_empty_pc_to_duckypad_buf()
-    buffff[2] = HID_COMMAND_PREV_PROFILE
+    buffff[2] = hid_command
     this_result = duckypad_write_with_retry(buffff)
-    update_banner_text(this_result)
+    if this_result == DP_WRITE_BUSY:
+        root.after(0, lambda: messagebox.showerror("Error", "duckyPad is busy!\nEnsure no script is running,\nand not in settings menu."))
+    else:
+        root.after(0, lambda: update_banner_text(this_result))
+
+def prev_prof_click():
+    threading.Thread(target=_prof_click_worker, args=(HID_COMMAND_PREV_PROFILE,), daemon=True).start()
 
 def next_prof_click():
-    buffff = get_empty_pc_to_duckypad_buf()
-    buffff[2] = HID_COMMAND_NEXT_PROFILE
-    this_result = duckypad_write_with_retry(buffff)
-    update_banner_text(this_result)
+    threading.Thread(target=_prof_click_worker, args=(HID_COMMAND_NEXT_PROFILE,), daemon=True).start()
 
 root = Tk()
 root.title("duckyPad autoswitcher " + THIS_VERSION_NUMBER)
