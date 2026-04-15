@@ -126,6 +126,11 @@ Fixed keyboard input not working when autoswitching is active on linux
 Fixed url open not working when in linux sudo
 Added retry delay when duckypad is busy
 Fixed SSL certificate not found error
+
+1.2.2
+Apr 15 2026
+Fixed prev/next profile buttons hanging UI when duckyPad is busy
+Fixed connect button showing "not found" when duckyPad is busy
 """
 
 UI_SCALE = float(os.getenv("DUCKYPAD_UI_SCALE", default=1))
@@ -133,7 +138,7 @@ UI_SCALE = float(os.getenv("DUCKYPAD_UI_SCALE", default=1))
 def scaled_size(size: int) -> int:
     return int(size * UI_SCALE)
 
-THIS_VERSION_NUMBER = '1.2.1'
+THIS_VERSION_NUMBER = '1.2.2'
 MAIN_WINDOW_WIDTH = scaled_size(640)
 MAIN_WINDOW_HEIGHT = scaled_size(660)
 PADDING = 10
@@ -199,7 +204,11 @@ def duckypad_connect():
         elif 'linux' in sys.platform:
             messagebox.showinfo("Info", "duckyPad detected, but please run me in sudo!")
         return False
-    
+
+    if all_dp_info_list == DP_SCAN_BUSY:
+        messagebox.showerror("Error", "duckyPad is busy!\nEnsure no script is running,\nand not in settings menu.")
+        return False
+
     if len(all_dp_info_list) == 0:
         connection_info_str.set("duckyPad not found")
         return False

@@ -45,8 +45,11 @@ def make_dp_info_dict(hid_msg, hid_path):
     this_dict['hid_msg'] = hid_msg
     return this_dict
 
+DP_SCAN_BUSY = "busy"
+
 def get_all_dp_info(dp_path_list):
     dp_info_list = []
+    any_busy = False
     pc_to_duckypad_buf = get_empty_pc_to_duckypad_buf()
     for this_path in dp_path_list:
         # print(this_path)
@@ -56,10 +59,15 @@ def get_all_dp_info(dp_path_list):
         result = thish.read(DUCKYPAD_TO_PC_HID_BUF_SIZE)
         thish.close()
         # print(result)
+        if result[2] == HID_RESPONSE_BUSY:
+            any_busy = True
+            continue
         if result[2] != HID_RESPONSE_OK:
             continue
         this_dict = make_dp_info_dict(result, this_path)
         dp_info_list.append(this_dict)
+    if any_busy:
+        return DP_SCAN_BUSY
     return dp_info_list
 
 def scan_duckypads():
