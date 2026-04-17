@@ -1,6 +1,6 @@
 # duckyPad Profile Auto-switcher
 
-### This Version of the Auto-switcher works for Niri using pyniri #(which has to be installed on the system or in a virtual environment) ###and a bit of modification to "get_profile.py"
+### This Version of the Auto-switcher works for Niri using pyniri (which has to be installed on the system or in a virtual environment) and a bit of modification to "get_profile.py"
 
 [Get duckyPad](https://duckypad.com) | [Official Discord](https://discord.gg/4sJCBx5)
 
