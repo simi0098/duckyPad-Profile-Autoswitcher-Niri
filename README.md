@@ -2,6 +2,8 @@
 
 ### This Version of the Auto-switcher works for Niri using pyniri (which has to be installed on the system or in a virtual environment) and a bit of modification to "get_profile.py"
 
+For me, it only worked without using sudo, but you can try it both ways.
+
 [Get duckyPad](https://duckypad.com) | [Official Discord](https://discord.gg/4sJCBx5)
 
 This app allows your duckyPad to **switch profiles automatically** based on **current active window**.
