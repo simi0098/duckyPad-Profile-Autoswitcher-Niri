@@ -1,31 +1,38 @@
-import platform
 import os
+import platform
+
+from pyniri import NiriError, NiriSocket
 
 this_os = platform.system()
 
 # --- Platform Specific Imports and Setup ---
 IS_WAYLAND = False
+IS_NIRI = False
+niri = NiriSocket("/run/user/1000/niri.wayland-1.1623.sock")
 
 if this_os == 'Windows':
     import ctypes
+
     import ctwin32
     import ctwin32.ntdll
     import ctwin32.user
     import pygetwindow as gw
 
 elif this_os == 'Darwin':
-    from AppKit import NSWorkspace
     import Quartz
+    from AppKit import NSWorkspace
 
 elif this_os == 'Linux':
     # Check for Wayland environment variable
     if os.environ.get('WAYLAND_DISPLAY'):
         IS_WAYLAND = True
+        if os.environ.get('XDG_CURRENT_DESKTOP') == 'niri':
+            IS_NIRI = True
     else:
         try:
-            from ewmh import EWMH
             import psutil
             import Xlib
+            from ewmh import EWMH
             # Attempt to connect to X server to ensure we aren't in a broken state
             # and to get the atom for window names.
             _display = Xlib.display.Display()
@@ -57,8 +64,17 @@ def get_list_of_all_windows():
 # --- Linux Implementation ---
 
 def linux_get_list_of_all_windows():
-    if IS_WAYLAND:
-        return {('Wayland', 'Wayland is not supported yet')}
+    if IS_WAYLAND and not IS_NIRI:
+        return 'Wayland', 'Wayland is not supported yet'
+    elif IS_NIRI:
+        windows = niri.get_windows()
+
+        result = [
+            (w.get("app_id"), w.get("title"))
+            for w in windows
+        ]
+
+        return result
 
     ret = set()
     ewmh = EWMH()
@@ -67,7 +83,7 @@ def linux_get_list_of_all_windows():
             win_pid = ewmh.getWmPid(window)
         except TypeError:
             win_pid = False
-        
+
         if win_pid:
             try:
                 app = psutil.Process(win_pid).name()
@@ -92,19 +108,24 @@ def linux_get_list_of_all_windows():
     return ret
 
 def linux_get_active_window():
-    if IS_WAYLAND:
+    if IS_WAYLAND and not IS_NIRI:
         return 'Wayland', 'Wayland is not supported yet'
+    elif IS_NIRI:
+        w = niri.get_focused_window()
+        return (w.get("app_id"), w.get("title"))
+
+
 
     ewmh = EWMH()
     active_window = ewmh.getActiveWindow()
     if not active_window:
         return '', ''
-    
+
     try:
         win_pid = ewmh.getWmPid(active_window)
     except (TypeError, Xlib.error.XResourceError):
         win_pid = False
-    
+
     wm_name = active_window.get_wm_name()
     if not wm_name:
         wm_name = active_window.get_full_property(NET_WM_NAME, 0).value
@@ -114,10 +135,10 @@ def linux_get_active_window():
             wm_name = f'class:{wm_class[0]}' if wm_class else 'unknown'
         except TypeError:
             wm_name = 'unknown'
-            
+
     if isinstance(wm_name, bytes):
         wm_name = wm_name.decode('utf-8')
-        
+
     if win_pid:
         try:
             active_app = psutil.Process(win_pid).name()
@@ -125,7 +146,7 @@ def linux_get_active_window():
             active_app = 'Unknown'
     else:
         return '', wm_name
-        
+
     return (active_app, wm_name)
 
 # --- macOS (Darwin) Implementation ---
