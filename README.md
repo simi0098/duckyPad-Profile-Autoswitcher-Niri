@@ -1,6 +1,6 @@
 # duckyPad Profile Auto-switcher
 
-### This Version of the Auto-switcher works for Niri using pyniri (which has to be installed on the system or in a virtual environment) and a bit of modification to "get_profile.py"
+### This Version of the Auto-switcher works for Niri using pyniri (which has to be installed on the system or in a virtual environment) and a bit of modification to "src/get_window.py".
 
 For me, it only worked without using sudo, but you can try it both ways.
 
