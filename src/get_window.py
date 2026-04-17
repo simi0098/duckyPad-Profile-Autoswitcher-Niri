@@ -8,7 +8,7 @@ this_os = platform.system()
 # --- Platform Specific Imports and Setup ---
 IS_WAYLAND = False
 IS_NIRI = False
-niri = NiriSocket("/run/user/1000/niri.wayland-1.1623.sock")
+niri = NiriSocket()
 
 if this_os == 'Windows':
     import ctypes
